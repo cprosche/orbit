@@ -10,7 +10,7 @@ fn calculate_orbital_period(mass: f64, semi_major_axis: f64) -> f64 {
 }
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, arg_required_else_help = true)]
 struct Cli {
     /// Celestial body to calculate orbits for
     #[command(subcommand)]
@@ -19,7 +19,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Earth,
+    /// Calculate common satellite orbits for Earth
+    Earth { altitude: Option<f64> },
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +49,12 @@ impl Orbit {
                 let period_in_seconds = calculate_orbital_period(self.body.mass, axis).ceil();
                 let period_in_minutes = &period_in_seconds / 60.0;
                 let period_in_days = &period_in_minutes / (60.0 * 24.0);
-                format!("{period_in_seconds}s {period_in_minutes:.2}m {period_in_days:.2}d")
+
+                format!(
+                    "{period_in_seconds} seconds
+{period_in_minutes:.2} minutes
+{period_in_days:.2} days"
+                )
             }
             Altitude::Range { max, min } => {
                 let max_axis = self.body.radius + max * 1000.0;
@@ -64,7 +70,11 @@ impl Orbit {
                 let min_period_in_minutes = &min_period_in_seconds / 60.0;
                 let min_period_in_days = &min_period_in_minutes / (60.0 * 24.0);
 
-                format!("{min_period_in_seconds}-{max_period_in_seconds}s {min_period_in_minutes:.2}-{max_period_in_minutes:.2}m {min_period_in_days:.2}-{max_period_in_days:.2}d")
+                format!(
+                    "{min_period_in_seconds}-{max_period_in_seconds} seconds
+{min_period_in_minutes:.2}-{max_period_in_minutes:.2} minutes 
+{min_period_in_days:.2}-{max_period_in_days:.2} days"
+                )
             }
         }
     }
@@ -73,54 +83,83 @@ impl Orbit {
 fn main() {
     let cli = Cli::parse();
     match &cli.command {
-        Some(Commands::Earth) => earth(),
-        None => println!("No commands provided"),
+        Some(Commands::Earth { altitude }) => earth(altitude.clone()),
+        _ => {}
     }
 }
 
-fn earth() {
+fn earth(altitude: Option<f64>) {
     let earth = Body {
         mass: 5.9722e24,
         radius: 6.3781e6,
     };
-    let orbits = vec![
-        Orbit {
-            name: "VLEO".to_string(),
-            altitude: Altitude::Range {
-                max: 450.0,
-                min: 100.0,
-            },
-            body: earth.clone(),
-        },
-        Orbit {
-            name: "LEO".to_string(),
-            altitude: Altitude::Range {
-                max: 2000.0,
-                min: 450.0,
-            },
-            body: earth.clone(),
-        },
-        Orbit {
-            name: "MEO".to_string(),
-            altitude: Altitude::Range {
-                min: 2000.0,
-                max: 36000.0,
-            },
-            body: earth.clone(),
-        },
-        Orbit {
-            name: "GEO".to_string(),
-            altitude: Altitude::Single { value: 35786.0 },
-            body: earth.clone(),
-        },
-    ];
 
+    let mut orbits = vec![];
+
+    match &altitude {
+        Some(value) => orbits.push(Orbit {
+            name: "User Defined".to_string(),
+            altitude: Altitude::Single {
+                value: value.clone(),
+            },
+            body: earth.clone(),
+        }),
+        None => {
+            orbits.push(Orbit {
+                name: "VLEO".to_string(),
+                altitude: Altitude::Range {
+                    max: 450.0,
+                    min: 100.0,
+                },
+                body: earth.clone(),
+            });
+            orbits.push(Orbit {
+                name: "LEO".to_string(),
+                altitude: Altitude::Range {
+                    max: 2000.0,
+                    min: 450.0,
+                },
+                body: earth.clone(),
+            });
+            orbits.push(Orbit {
+                name: "MEO".to_string(),
+                altitude: Altitude::Range {
+                    min: 2000.0,
+                    max: 36000.0,
+                },
+                body: earth.clone(),
+            });
+            orbits.push(Orbit {
+                name: "GEO".to_string(),
+                altitude: Altitude::Single { value: 35786.0 },
+                body: earth.clone(),
+            });
+        }
+    }
+
+    println!();
+    println!("Constants");
+    println!("{SEPARATOR}");
+    println!("Pi: {PI}");
+    println!("Gravitational Constant: {GRAVITATIONAL_CONSTANT:+e} N*m^2*kg^-2");
+    println!("Earth Mass: {:+e} kg", earth.mass);
+    println!("Earth Radius: {:+e} m", earth.radius);
+    println!("{SEPARATOR}");
+    println!();
+    println!();
     println!("Orbital Periods");
     println!("{SEPARATOR}");
+    println!();
 
-    orbits
-        .iter()
-        .for_each(|o| println!("{}: {}", o.name, o.get_period_string()));
+    orbits.iter().for_each(|o| match &o.altitude {
+        Altitude::Single { value } => {
+            println!("{} ({value} km) \n{}\n", o.name, o.get_period_string());
+        }
+        Altitude::Range { max, min } => {
+            println!("{} ({min}-{max} km) \n{}\n", o.name, o.get_period_string());
+        }
+    });
 
-    println!("{SEPARATOR}")
+    println!("{SEPARATOR}");
+    println!()
 }
