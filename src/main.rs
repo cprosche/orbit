@@ -16,7 +16,25 @@ fn calculate_orbital_period(mass: f64, semi_major_axis: f64) -> f64 {
 fn calculate_circular_orbital_velocity(mass: f64, semi_major_axis: f64) -> f64 {
     // mass: kg
     // semi_major_axis: m
-    ((GRAVITATIONAL_CONSTANT * mass) / semi_major_axis).sqrt() // m / s
+    ((GRAVITATIONAL_CONSTANT * mass) / semi_major_axis).sqrt() // m/s
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_orbital_period() {
+        assert_eq!(calculate_orbital_period(1.0, 1.0), 769089.0705748867)
+    }
+
+    #[test]
+    fn test_orbital_velocity() {
+        assert_eq!(
+            calculate_circular_orbital_velocity(1.0, 1.0),
+            8.169638914909275e-6
+        )
+    }
 }
 
 #[derive(Parser)]
@@ -40,7 +58,7 @@ struct Body {
 }
 
 enum Altitude {
-    // always in km
+    // all always in km
     Single { value: f64 },
     Range { max: f64, min: f64 },
 }
